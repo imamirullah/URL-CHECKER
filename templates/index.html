@@ -105,9 +105,10 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log("data message",data)
                 if (data.message) {
                     let files = data.files; // List of files from response
-                    
+                    console.log("data message inside if",data)
                     if (files.includes("live_urls.txt")) {
                         document.getElementById("liveDownload").classList.remove("hidden");
                         document.getElementById("liveDownload").querySelector("a").href = "/download/live_urls.txt";
