@@ -80,4 +80,5 @@ def download_file(filename):
 
 # Run Flask app
 if __name__ == "__main__":
+    print("server running")
     app.run(debug=True)
