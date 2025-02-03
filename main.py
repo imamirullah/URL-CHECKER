@@ -11,10 +11,11 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Function to check a single URL
 def check_url(url, live_urls, not_found_urls, redirected_urls):
+    print("check url function")
     try:
         response = requests.get(url, timeout=10, allow_redirects=True)
         final_url = response.url
-
+        print("final url response",final_url)
         if final_url != url:
             redirected_urls.append(final_url)
 
@@ -53,14 +54,17 @@ def home():
 # API to check URLs
 @app.route("/check_urls", methods=["POST"])
 def check_urls():
+    
     data = request.get_json()
     urls = data.get("urls", [])
+    print("after url check function",data,urls)
 
     if not urls:
+        print("if not urls")
         return jsonify({"error": "No URLs provided"}), 400
 
     file_paths = process_urls(urls)
-
+    print("file paths =",file_paths)
     return jsonify({
         "message": "URLs processed successfully",
         "files": list(file_paths.keys())  # Send filenames in response
