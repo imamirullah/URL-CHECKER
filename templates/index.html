@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Status Checker</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: aliceblue; }
+        textarea {
+             width: 80%;
+             height: 150px;
+             margin: 10px; 
+            padding: 10px;
+            border-radius: 20px;
+            box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+         }
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(45deg, #6a11cb, #2575fc);
+            
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+          }
+          
+          button:hover {
+            background: linear-gradient(45deg, #2575fc, #6a11cb);
+            transform: scale(1.05);
+          }
+          
+          button:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+          }
+        
+  
+  
+  
+  
+        .hidden { display: none; }
+
+        #liveDownload {
+            border: 1px solid;
+            height: auto;
+            color: black;
+            text-decoration: none;
+        }
+        a{
+            text-decoration: none;
+            color: white;
+        }
+        #notFoundDownload{
+            border: 1px solid;
+            height: auto;
+            color: black;
+            text-decoration: none;
+        }
+        #redirectDownload{
+            border: 1px solid;
+            height: auto;
+            color: black;
+            text-decoration: none;
+        }
+        .f-btns{
+            max-width: 500px;
+            margin: auto;
+            display: flex;
+            gap: 15px;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Enter URLs (one per line)</h2>
+    <textarea id="urlList" placeholder="Enter URLs here..."></textarea><br>
+    <button onclick="checkUrls()">Check URLs</button>
+
+    <h3>Download Results:</h3>
+    <div class="f-btns">
+        <button id="liveDownload" class="hidden"><a  href="#" download="live_urls.txt">✅ Download Live URLs</a></button>
+    <button id="notFoundDownload" class="hidden"><a  href="#" download="404_urls.txt">❌ Download 404 URLs</a></button>
+    <button id="redirectDownload" class="hidden"> <a  href="#" download="redirected_urls.txt">🔀 Download Redirected URLs</a></button>
+    </div>
+    
+   
+
+    <script>
+        function checkUrls() {
+            let urls = document.getElementById("urlList").value.trim();
+            if (urls === "") {
+                alert("Please enter URLs!");
+                return;
+            }
+    
+            fetch("/check_urls", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ urls: urls.split("\n") })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    let files = data.files; // List of files from response
+                    
+                    if (files.includes("live_urls.txt")) {
+                        document.getElementById("liveDownload").classList.remove("hidden");
+                        document.getElementById("liveDownload").querySelector("a").href = "/download/live_urls.txt";
+                    }
+    
+                    if (files.includes("404_urls.txt")) {
+                        document.getElementById("notFoundDownload").classList.remove("hidden");
+                        document.getElementById("notFoundDownload").querySelector("a").href = "/download/404_urls.txt";
+                    }
+    
+                    if (files.includes("redirected_urls.txt")) {
+                        document.getElementById("redirectDownload").classList.remove("hidden");
+                        document.getElementById("redirectDownload").querySelector("a").href = "/download/redirected_urls.txt";
+                    }
+                }
+            })
+            .catch(error => alert("Error checking URLs!"));
+        }
+    </script>
+    
+
+</body>
+</html>
