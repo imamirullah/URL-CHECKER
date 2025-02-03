@@ -5,17 +5,31 @@ import os
 
 app = Flask(__name__)
 
-# Directory to store output files
-OUTPUT_DIR = "output"
+# Attempt to use a known writable directory (/tmp) if available, otherwise fallback to a local directory.
+def get_writable_output_dir():
+    test_dir = "/tmp"
+    test_file = os.path.join(test_dir, "test.txt")
+    try:
+        with open(test_file, "w") as f:
+            f.write("test")
+        os.remove(test_file)
+        return test_dir
+    except Exception as e:
+        print(f"/tmp is not writable, falling back to local 'output' directory. Error: {e}")
+        fallback_dir = os.path.join(os.getcwd(), "output")
+        return fallback_dir
+
+OUTPUT_DIR = get_writable_output_dir()
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+print(f"Files will be written to: {OUTPUT_DIR}")
 
 # Function to check a single URL
 def check_url(url, live_urls, not_found_urls, redirected_urls):
-    print("check url function")
+    print(f"Processing URL: {url}")
     try:
         response = requests.get(url, timeout=10, allow_redirects=True)
         final_url = response.url
-        print("final url response",final_url)
+        print("Final URL:", final_url)
         if final_url != url:
             redirected_urls.append(final_url)
 
@@ -23,7 +37,8 @@ def check_url(url, live_urls, not_found_urls, redirected_urls):
             not_found_urls.append(url)
         else:
             live_urls.append(url)
-    except requests.exceptions.RequestException:
+    except requests.exceptions.RequestException as e:
+        print(f"Error processing {url}: {e}")
         not_found_urls.append(url)
 
 # Function to process URLs in parallel
@@ -33,20 +48,29 @@ def process_urls(url_list):
     with ThreadPoolExecutor(max_workers=50) as executor:
         executor.map(lambda url: check_url(url, live_urls, not_found_urls, redirected_urls), url_list)
 
-    # Save results to files
-    file_paths = {
+    # Prepare file data
+    file_data = {
         "live_urls.txt": live_urls,
         "404_urls.txt": not_found_urls,
         "redirected_urls.txt": redirected_urls,
     }
 
-    for filename, data in file_paths.items():
-        with open(os.path.join(OUTPUT_DIR, filename), "w", encoding="utf-8") as f:
-            f.write("\n".join(data))
+    created_files = {}
 
-    return file_paths  # Return file names for frontend
+    # Save results to files with error logging
+    for filename, data in file_data.items():
+        file_path = os.path.join(OUTPUT_DIR, filename)
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(data))
+            created_files[filename] = data  # Save the data for reference
+            print(f"Successfully wrote to {file_path}")
+        except Exception as e:
+            print(f"Error writing to {file_path}: {e}")
 
-# Route to serve frontend
+    return created_files  # Return dict with filenames and their data
+
+# Route to serve the frontend
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -54,31 +78,30 @@ def home():
 # API to check URLs
 @app.route("/check_urls", methods=["POST"])
 def check_urls():
-    
     data = request.get_json()
     urls = data.get("urls", [])
-    print("after url check function",data,urls)
+    print("Received data:", data)
 
     if not urls:
-        print("if not urls")
         return jsonify({"error": "No URLs provided"}), 400
 
-    file_paths = process_urls(urls)
-    print("file paths =",file_paths)
+    files_created = process_urls(urls)
+    print("Files created:", files_created.keys())
+    
     return jsonify({
         "message": "URLs processed successfully",
-        "files": list(file_paths.keys())  # Send filenames in response
+        "files": list(files_created.keys())
     })
 
 # Route to download files
 @app.route("/download/<filename>")
 def download_file(filename):
-    filepath = os.path.join(OUTPUT_DIR, filename)
-    if os.path.exists(filepath):
+    file_path = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(file_path):
         return send_from_directory(OUTPUT_DIR, filename, as_attachment=True, mimetype="text/plain")
     return jsonify({"error": "File not found"}), 404
 
 # Run Flask app
 if __name__ == "__main__":
-    print("server running")
+    print("Server running...")
     app.run(debug=True)
